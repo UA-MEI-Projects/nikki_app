@@ -6,10 +6,11 @@ import 'package:nikki_app/utils/get_it_init.dart';
 import '../db/nikki_shared_pref.dart';
 
 class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key});
+  SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+
     return SafeArea(
       child: SettingsList(
         sections: [

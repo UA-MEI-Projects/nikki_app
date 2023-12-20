@@ -3,14 +3,14 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:nikki_app/model/diary_entry.dart';
-import 'package:nikki_app/screens/map.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:nikki_app/data/diary_entry.dart';
+import 'package:nikki_app/domain/bloc/camera_cubit.dart';
 import 'package:nikki_app/utils/camera_util.dart';
 import 'package:nikki_app/widgets/diary_entry.dart';
 import 'package:nikki_app/widgets/nikki_title.dart';
-import 'package:provider/provider.dart';
 
-import '../model/diary_entry_model.dart';
+import '../domain/repository/user_repository.dart';
 import '../widgets/error_page.dart';
 import '../widgets/loading_page.dart';
 import '../widgets/no_entry_taken.dart';
@@ -29,8 +29,8 @@ class _CameraScreenState extends State<CameraScreen> {
 
   @override
   void initState() {
-    super.initState();
     textEditingController = TextEditingController();
+    super.initState();
   }
 
   @override
@@ -41,18 +41,19 @@ class _CameraScreenState extends State<CameraScreen> {
 
   @override
   Widget build(BuildContext context) {
-    var diaryEntryModel = context.watch<DiaryEntryModel>();
+    final bloc = context.read<CameraCubit>();
 
     void onSubmit() async {
       Navigator.of(context).pop();
       var description = textEditingController.text;
-      if(description != null && description.isNotEmpty){
+      if (description != null && description.isNotEmpty) {
         await Geolocator.getCurrentPosition(
-            desiredAccuracy: LocationAccuracy.high)
+                desiredAccuracy: LocationAccuracy.high)
             .then((Position position) {
           var diaryEntry = DiaryEntryData("test_user", DateTime.now(),
               textEditingController.text, latestImage, position);
-          diaryEntryModel.addEntry(diaryEntry);
+          bloc.addDiaryEntry(diaryEntry);
+          //push to database
         }).catchError((e) {
           debugPrint(e);
         });
@@ -78,9 +79,7 @@ class _CameraScreenState extends State<CameraScreen> {
 
     takeEntry() {
       CameraUtil().pick(onPick: (File? image) async {
-        setState(() {
-          latestImage = image!;
-        });
+        latestImage = image;
         openDialog();
       });
     }
@@ -100,26 +99,28 @@ class _CameraScreenState extends State<CameraScreen> {
                 },
                 child: Text("Press me"),
               ),
-              FutureBuilder<DiaryEntryData?>(
-                future: diaryEntryModel.fetchTodayEntry(),
+              StreamBuilder<UserRepository>(
+                stream: bloc.userStream,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return LoadingPage(); // Placeholder loading indicator
                   } else if (snapshot.hasError) {
                     return ErrorPage(content: snapshot.error.toString());
                   } else if (snapshot.hasData && snapshot.data != null) {
-                    return Column(
-                      children: [
-                        NikkiTitle(content: "Today's Nikki"),
-                        Center(
-                          child: DiaryEntryDetailsWidget(diaryEntry: snapshot.data!,),
-                        ),
-                      ],
-                    );
+                    final userRepository = snapshot.data!;
+                    if (userRepository.diaryEntry != null) {
+                      return Column(
+                        children: [
+                          NikkiTitle(content: "Today's Nikki"),
+                          Center(
+                            child: DiaryEntryDetailsWidget(
+                                diaryEntry: userRepository.diaryEntry!),
+                          ),
+                        ],
+                      );
+                    }
                   }
-                  else {
-                    return NoEntryTakenWidget();
-                  }
+                  return NoEntryTakenWidget();
                 },
               )
             ]),

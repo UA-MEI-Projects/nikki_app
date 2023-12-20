@@ -1,7 +1,9 @@
-class User{
-  String username;
-  String uuid;
-  DateTime createdAccount;
-
-  User(this.username, this.uuid, this.createdAccount);
-}
+// import 'package:isar/isar.dart';
+//
+// part 'user.g.dart';
+//
+// @Collection()
+// class User {
+//   Id id = Isar.autoIncrement;
+//   String? username;
+// }

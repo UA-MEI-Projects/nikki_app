@@ -1,7 +1,7 @@
 
 
 import 'package:flutter/material.dart';
-import 'package:nikki_app/model/diary_entry.dart';
+import 'package:nikki_app/data/diary_entry.dart';
 
 class DiaryEntryWidget extends StatefulWidget{
   final DiaryEntryData diaryEntry;

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:nikki_app/model/diary_entry.dart';
+import 'package:nikki_app/data/diary_entry.dart';
 import 'package:nikki_app/screens/bluetooth_connection_screen.dart';
 import 'package:nikki_app/widgets/nikki_title.dart';
 import 'package:nikki_app/widgets/diary_entry.dart';

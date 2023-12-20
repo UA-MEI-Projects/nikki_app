@@ -20,7 +20,6 @@ class NikkiSharedPreferences {
   static bool getThemeMode() {
     bool? theme = _preferences.getBool(_keyThemeMode);
     if (theme == null) {
-      //TODO: take care of storing default values while registering the app first time
       return false;
     }
     return theme;

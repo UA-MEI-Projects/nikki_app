@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:nikki_app/model/diary_entry.dart';
+import 'package:nikki_app/data/diary_entry.dart';
 import 'package:nikki_app/widgets/error_page.dart';
 import 'package:nikki_app/widgets/loading_page.dart';
 import 'package:nikki_app/widgets/nikki_title.dart';
 import 'package:provider/provider.dart';
 
-import '../model/diary_entry_model.dart';
+import '../domain/bloc/map_cubit.dart';
+import '../domain/repository/user_repository.dart';
 import '../widgets/no_entry_taken.dart';
 
 class MapScreen extends StatefulWidget {
@@ -20,11 +21,13 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   late final TabController _tabController;
+  bool _dataLoaded = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _loadData();
   }
 
 
@@ -34,10 +37,17 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  Future<void> _loadData() async {
+    // Assuming you have a MapCubit available through your BlocProvider
+    await context.read<MapCubit>().loadUserData();
+    setState(() {
+      _dataLoaded = true;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    var diaryEntry = context.watch<DiaryEntryModel>();
-
+    var bloc = context.read<MapCubit>();
     return (Scaffold(
       appBar: AppBar(
         title: NikkiTitle(content: "History"),
@@ -49,16 +59,17 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       body: TabBarView(
         controller: _tabController,
         children: <Widget>[
-          FutureBuilder<DiaryEntryData?>(
-            future: diaryEntry.fetchTodayEntry(),
+          FutureBuilder<UserRepository>(
+            future: _dataLoaded? null : _loadData() as Future<UserRepository>,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return LoadingPage(); // Placeholder loading indicator
               } else if (snapshot.hasError) {
                 return ErrorPage(content: snapshot.error.toString());
               } else if (snapshot.hasData && snapshot.data != null) {
+                final userRepository = snapshot.data;
                 return Center(
-                  child: MapWidget(diaryEntry: snapshot.data!),
+                  child: MapWidget(diaryEntry: userRepository!.diaryEntry!),
                 );
               } else {
                 return NoEntryTakenWidget();

@@ -1,6 +1,8 @@
-import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:nikki_app/domain/bloc/map_cubit.dart';
+import 'package:nikki_app/domain/bloc/shared_cubit.dart';
 import 'package:nikki_app/screens/camera.dart';
 import 'package:nikki_app/screens/map.dart';
 import 'package:nikki_app/screens/settings.dart';
@@ -10,17 +12,15 @@ import 'package:path/path.dart';
 import 'package:provider/provider.dart';
 import 'config/app_config.dart';
 import 'db/nikki_shared_pref.dart';
-import 'model/diary_entry_model.dart';
+import 'domain/bloc/camera_cubit.dart';
+import 'domain/repository/user_repository.dart';
 import 'utils/get_it_init.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  GetItInitialization().setupGetIt();
+  await GetItInitialization().setupGetIt();
 
-  runApp(ChangeNotifierProvider(
-    create: (context) => DiaryEntryModel(),
-    child: NikkiApp(),
-  ));
+  runApp(NikkiApp());
 }
 
 class NikkiApp extends StatefulWidget {
@@ -63,7 +63,21 @@ class AppContainer extends StatefulWidget{
 
 class _AppContainerState extends State<AppContainer> {
   int screenIndex = 0;
-  final screens = [CameraScreen(), MapScreen(), ShareScreen(), SettingsScreen()];
+  final screens = [
+    BlocProvider(
+      create: (context) => CameraCubit(getIt.get<UserRepository>()),
+      child: CameraScreen(),
+    ),
+    BlocProvider(
+      create: (context) => MapCubit(getIt.get<UserRepository>()),
+      child: MapScreen(),
+    ),
+    BlocProvider(
+      create: (context) => SharedCubit(getIt.get<UserRepository>()),
+      child: ShareScreen(),
+    ),
+    SettingsScreen()
+  ];
   void onNavigate(int index) {
     setState(() {
       screenIndex = index;
