@@ -6,7 +6,7 @@ import 'package:nikki_app/utils/get_it_init.dart';
 import '../db/nikki_shared_pref.dart';
 
 class SettingsScreen extends StatelessWidget {
-  SettingsScreen({super.key});
+  const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -17,19 +17,19 @@ class SettingsScreen extends StatelessWidget {
           SettingsSection(
             tiles: <SettingsTile>[
               SettingsTile.navigation(
-                  title: NikkiTitle(content: "Generate a new Prompt"),
+                  title: const NikkiTitle(content: "Generate a new Prompt"),
                 onPressed: (context)=>{},
               ),
               SettingsTile.navigation(
-                leading: Icon(Icons.info),
-                title: NikkiTitle(content:'About'),
+                leading: const Icon(Icons.info),
+                title: const NikkiTitle(content:'About'),
                 onPressed: (context)=>{},
               ),
               SettingsTile.switchTile(
                 onToggle: (value) {getIt<NikkiSharedPreferences>().setThemeMode(value);},
                 initialValue: true,
-                leading: Icon(Icons.dark_mode),
-                title: NikkiTitle(content:'Dark Mode'),
+                leading: const Icon(Icons.dark_mode),
+                title: const NikkiTitle(content:'Dark Mode'),
               ),
             ],
           ),

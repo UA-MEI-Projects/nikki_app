@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:nikki_app/data/diary_entry.dart';
 
 class DiaryEntryModel extends ChangeNotifier{
-  DiaryEntryData? _entry = null;
+  DiaryEntryData? _entry;
 
   //test api calls
   Future<DiaryEntryData?> fetchTodayEntry() async {

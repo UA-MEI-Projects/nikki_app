@@ -1,30 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:nikki_app/domain/bloc/map_cubit.dart';
-import 'package:nikki_app/domain/bloc/shared_cubit.dart';
+import 'package:nikki_app/domain/bloc/preferences_cubit.dart';
 import 'package:nikki_app/screens/camera.dart';
 import 'package:nikki_app/screens/map.dart';
 import 'package:nikki_app/screens/settings.dart';
 import 'package:nikki_app/screens/share.dart';
 import 'package:nikki_app/utils/get_it_init.dart';
-import 'package:path/path.dart';
-import 'package:provider/provider.dart';
 import 'config/app_config.dart';
-import 'db/nikki_shared_pref.dart';
-import 'domain/bloc/camera_cubit.dart';
+import 'domain/bloc/diary_entry_cubit.dart';
 import 'domain/repository/user_repository.dart';
-import 'utils/get_it_init.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await GetItInitialization().setupGetIt();
-
-  runApp(NikkiApp());
+  runApp(const NikkiApp());
 }
 
 class NikkiApp extends StatefulWidget {
-  const NikkiApp({Key? key}) : super(key: key);
+  const NikkiApp({super.key});
 
   @override
   State<NikkiApp> createState() => _NikkiAppState();
@@ -51,33 +45,45 @@ class _NikkiAppState extends State<NikkiApp> {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
         useMaterial3: true,
       ),
-      home: AppContainer(),
+      home: const AppContainer(),
     );
   }
 }
 
 class AppContainer extends StatefulWidget{
+  const AppContainer({super.key});
+
   @override
   State<StatefulWidget> createState() => _AppContainerState();
 }
 
 class _AppContainerState extends State<AppContainer> {
   int screenIndex = 0;
+  // final screens = [
+  //   BlocProvider(
+  //     create: (context) => getIt.get<DiaryEntryCubit>(),
+  //     child: const CameraScreen(),
+  //   ),
+  //   BlocProvider(
+  //     create: (context) => getIt.get<DiaryEntryCubit>(),
+  //     child: const MapScreen(),
+  //   ),
+  //   BlocProvider(
+  //     create: (context) => getIt.get<DiaryEntryCubit>(),
+  //     child: const ShareScreen(),
+  //   ),
+  //   BlocProvider(create: (context) => getIt.get<PreferencesCubit>(),
+  //     child: const SettingsScreen(),
+  //   )
+  // ];
+
   final screens = [
-    BlocProvider(
-      create: (context) => CameraCubit(getIt.get<UserRepository>()),
-      child: CameraScreen(),
-    ),
-    BlocProvider(
-      create: (context) => MapCubit(getIt.get<UserRepository>()),
-      child: MapScreen(),
-    ),
-    BlocProvider(
-      create: (context) => SharedCubit(getIt.get<UserRepository>()),
-      child: ShareScreen(),
-    ),
+    CameraScreen(),
+    MapScreen(),
+    ShareScreen(),
     SettingsScreen()
   ];
+
   void onNavigate(int index) {
     setState(() {
       screenIndex = index;
@@ -110,31 +116,35 @@ class _AppContainerState extends State<AppContainer> {
 
   @override
   Widget build(BuildContext context) {
+    AppConfig().fetchData();
     _handleLocationPermission(context);
-    return Scaffold(
-        extendBody: true,
-        body: screens[screenIndex],
-        bottomNavigationBar: BottomNavigationBar(
-            iconSize: 35.0,
-            elevation: 1,
-            selectedFontSize: 0,
-            unselectedFontSize: 0,
-            selectedItemColor: Theme.of(context).colorScheme.primary,
-            unselectedItemColor: Theme.of(context).colorScheme.secondary,
-            showSelectedLabels: false,
-            showUnselectedLabels: false,
-            currentIndex: screenIndex,
-            onTap: onNavigate,
-            items: [
-              BottomNavigationBarItem(
-                  label: 'Camera', icon: Icon(Icons.camera_alt)),
-              BottomNavigationBarItem(
-                  label: 'Map', icon: Icon(Icons.map)),
-              BottomNavigationBarItem(
-                  label: 'Share', icon: Icon(Icons.share)),
-              BottomNavigationBarItem(
-                  label: 'Settings', icon: Icon(Icons.settings)),
-        ])
+    return BlocProvider(
+      create: (context) => getIt.get<DiaryEntryCubit>(),
+      child: Scaffold(
+          extendBody: true,
+          body: screens[screenIndex],
+          bottomNavigationBar: BottomNavigationBar(
+              iconSize: 35.0,
+              elevation: 1,
+              selectedFontSize: 0,
+              unselectedFontSize: 0,
+              selectedItemColor: Theme.of(context).colorScheme.primary,
+              unselectedItemColor: Theme.of(context).colorScheme.secondary,
+              showSelectedLabels: false,
+              showUnselectedLabels: false,
+              currentIndex: screenIndex,
+              onTap: onNavigate,
+              items: const [
+                BottomNavigationBarItem(
+                    label: 'Camera', icon: Icon(Icons.camera_alt)),
+                BottomNavigationBarItem(
+                    label: 'Map', icon: Icon(Icons.map)),
+                BottomNavigationBarItem(
+                    label: 'Share', icon: Icon(Icons.share)),
+                BottomNavigationBarItem(
+                    label: 'Settings', icon: Icon(Icons.settings)),
+          ])
+      ),
     );
   }
 }

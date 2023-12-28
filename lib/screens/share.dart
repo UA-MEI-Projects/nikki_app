@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:nikki_app/data/diary_entry.dart';
 import 'package:nikki_app/screens/bluetooth_connection_screen.dart';
 import 'package:nikki_app/widgets/nikki_title.dart';
-import 'package:nikki_app/widgets/diary_entry.dart';
 
 class ShareScreen extends StatelessWidget {
   const ShareScreen({super.key});
@@ -18,7 +17,7 @@ class ShareScreen extends StatelessWidget {
               direction: Axis.horizontal,
               textDirection: TextDirection.ltr,
               crossAxisAlignment: WrapCrossAlignment.center,
-              children: [BluetoothShareWidget(), SharedWithMeWidget()]),
+              children: [const BluetoothShareWidget(), SharedWithMeWidget()]),
         )),
       ),
     );
@@ -36,13 +35,13 @@ class BluetoothShareWidget extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        NikkiTitle(content: "Connect with other users"),
+        const NikkiTitle(content: "Connect with other users"),
         IconButton(
           onPressed: () {
             Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => BluetoothConnectionWidget()));
+                builder: (context) => const BluetoothConnectionWidget()));
           },
-          icon: Icon(Icons.refresh),
+          icon: const Icon(Icons.refresh),
           iconSize: 80.0,
         )
       ],
@@ -52,11 +51,13 @@ class BluetoothShareWidget extends StatelessWidget {
 
 class SharedWithMeWidget extends StatelessWidget {
 
-  List<DiaryEntryData> sharedEntries = []; //substituir por partilhas partilhadas
+  List<DiaryEntryData> sharedEntries = [];
+
+  SharedWithMeWidget({super.key}); //substituir por partilhas partilhadas
   
   @override
   Widget build(BuildContext context) {
-    return Material(
+    return const Material(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         crossAxisAlignment: CrossAxisAlignment.center,

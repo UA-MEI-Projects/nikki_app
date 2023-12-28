@@ -2,16 +2,16 @@
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:location/location.dart';
 import 'package:nearby_connections/nearby_connections.dart';
 import 'package:nikki_app/widgets/nikki_title.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class BluetoothConnectionWidget extends StatefulWidget{
+  const BluetoothConnectionWidget({super.key});
+
   @override
   State<StatefulWidget> createState()  => _BluetoothConnectionWidget();
 
@@ -24,152 +24,24 @@ class _BluetoothConnectionWidget extends State<BluetoothConnectionWidget>{
 
   String? tempFileUri; //reference to the file currently being transferred
   Map<int, String> map = {};
+  bool permissionGranted = false;
 
   @override
   Widget build(BuildContext context) {
+
+    [
+      Permission.bluetooth,
+      Permission.bluetoothAdvertise,
+      Permission.bluetoothConnect,
+      Permission.bluetoothScan
+    ].request();
+
     return Scaffold(
       appBar: AppBar(
-        title: NikkiTitle(content: "Searching for users...",),
+        title: const NikkiTitle(content: "Searching for users...",),
       ),
       body: ListView(
         children: <Widget>[
-          const Text(
-            "Permissions",
-          ),
-          Wrap(
-            children: <Widget>[
-              ElevatedButton(
-                child: const Text("checkLocationPermission (<= Android 12)"),
-                onPressed: () async {
-                  if (await Permission.location.isGranted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text("Location permissions granted :)")));
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content:
-                        Text("Location permissions not granted :(")));
-                  }
-                },
-              ),
-              ElevatedButton(
-                child: const Text("askLocationPermission"),
-                onPressed: () async {
-                  if (await Permission.location.request().isGranted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text("Location Permission granted :)")));
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content:
-                        Text("Location permissions not granted :(")));
-                  }
-                },
-              ),
-              ElevatedButton(
-                child: const Text("checkExternalStoragePermission"),
-                onPressed: () async {
-                  if (await Permission.storage.isGranted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content:
-                        Text("External Storage permissions granted :)")));
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text(
-                            "External Storage permissions not granted :(")));
-                  }
-                },
-              ),
-              ElevatedButton(
-                child: const Text("askExternalStoragePermission"),
-                onPressed: () {
-                  Permission.storage.request();
-                },
-              ),
-              ElevatedButton(
-                child: const Text("checkBluetoothPermission (>= Android 12)"),
-                onPressed: () async {
-                  if (!(await Future.wait([
-                    Permission.bluetooth.isGranted,
-                    Permission.bluetoothAdvertise.isGranted,
-                    Permission.bluetoothConnect.isGranted,
-                    Permission.bluetoothScan.isGranted,
-                  ]))
-                      .any((element) => false)) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text("Bluethooth permissions granted :)")));
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content:
-                        Text("Bluetooth permissions not granted :(")));
-                  }
-                },
-              ),
-              ElevatedButton(
-                child: const Text("askBluetoothPermission (Android 12+)"),
-                onPressed: () {
-                  [
-                    Permission.bluetooth,
-                    Permission.bluetoothAdvertise,
-                    Permission.bluetoothConnect,
-                    Permission.bluetoothScan
-                  ].request();
-                },
-              ),
-              ElevatedButton(
-                child: const Text(
-                    "checkNearbyWifiDevicesPermission (>= Android 12)"),
-                onPressed: () async {
-                  if (await Permission.nearbyWifiDevices.isGranted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text(
-                            "NearbyWifiDevices permissions granted :)")));
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text(
-                            "NearbyWifiDevices permissions not granted :(")));
-                  }
-                },
-              ),
-              ElevatedButton(
-                child: const Text(
-                    "askNearbyWifiDevicesPermission (Android 12+)"),
-                onPressed: () {
-                  Permission.nearbyWifiDevices.request();
-                },
-              ),
-            ],
-          ),
-          const Divider(),
-          const Text("Location Enabled"),
-          Wrap(
-            children: <Widget>[
-              ElevatedButton(
-                child: const Text("checkLocationEnabled"),
-                onPressed: () async {
-                  if (await Location.instance.serviceEnabled()) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Location is ON :)")));
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Location is OFF :(")));
-                  }
-                },
-              ),
-              ElevatedButton(
-                child: const Text("enableLocationServices"),
-                onPressed: () async {
-                  if (await Location.instance.requestService()) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text("Location Service Enabled :)")));
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content:
-                        Text("Enabling Location Service Failed :(")));
-                  }
-                },
-              ),
-            ],
-          ),
-          const Divider(),
           Text("User Name: $userName"),
           Wrap(
             children: <Widget>[

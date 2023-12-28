@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:nikki_app/data/diary_entry.dart';
+import 'package:nikki_app/domain/bloc/diary_entry_cubit.dart';
+import 'package:nikki_app/widgets/diary_entry.dart';
 import 'package:nikki_app/widgets/error_page.dart';
 import 'package:nikki_app/widgets/loading_page.dart';
 import 'package:nikki_app/widgets/nikki_title.dart';
 import 'package:provider/provider.dart';
 
-import '../domain/bloc/map_cubit.dart';
 import '../domain/repository/user_repository.dart';
 import '../widgets/no_entry_taken.dart';
 
@@ -21,15 +21,11 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   late final TabController _tabController;
-  bool _dataLoaded = false;
-
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadData();
   }
-
 
   @override
   void dispose() {
@@ -37,46 +33,39 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  Future<void> _loadData() async {
-    // Assuming you have a MapCubit available through your BlocProvider
-    await context.read<MapCubit>().loadUserData();
-    setState(() {
-      _dataLoaded = true;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    var bloc = context.read<MapCubit>();
+    final bloc = context.read<DiaryEntryCubit>();
     return (Scaffold(
       appBar: AppBar(
-        title: NikkiTitle(content: "History"),
+        title: const NikkiTitle(content: "History"),
         bottom: TabBar(
           controller: _tabController,
-          tabs: [Tab(text: "Map"), Tab(text: "Calendar")],
+          tabs: const [Tab(text: "Map"), Tab(text: "Calendar")],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
         children: <Widget>[
           FutureBuilder<UserRepository>(
-            future: _dataLoaded? null : _loadData() as Future<UserRepository>,
+            future: bloc.loadData(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return LoadingPage(); // Placeholder loading indicator
+                return const LoadingPage(); // Placeholder loading indicator
               } else if (snapshot.hasError) {
                 return ErrorPage(content: snapshot.error.toString());
               } else if (snapshot.hasData && snapshot.data != null) {
                 final userRepository = snapshot.data;
                 return Center(
-                  child: MapWidget(diaryEntry: userRepository!.diaryEntry!),
+                  child: MapWidget(
+                      personalEntries: userRepository!.personalEntries),
                 );
               } else {
-                return NoEntryTakenWidget();
+                return const NoEntryTakenWidget();
               }
             },
           ),
-          CalendarWidget(),
+          const CalendarWidget(),
         ],
       ),
     ));
@@ -88,7 +77,7 @@ class CalendarWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return const Column(
       children: [
         //CalendarDatePicker(initialDate: DateTime(), firstDate: DateTime(), lastDate: DateTime(), onDateChanged: (dateTime){})
       ],
@@ -97,35 +86,50 @@ class CalendarWidget extends StatelessWidget {
 }
 
 class MapWidget extends StatelessWidget {
-  const MapWidget({super.key, required this.diaryEntry});
+  const MapWidget({super.key, required this.personalEntries});
 
-  final DiaryEntryData diaryEntry;
+  final List<DiaryEntryData> personalEntries;
 
   @override
   Widget build(BuildContext context) {
+    Future openDialog(DiaryEntryData entry) => showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+              title: const NikkiTitle(content: "Your memories"),
+              content: DiaryEntryDetailsWidget(diaryEntry: entry),
+              actions: [
+                TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: const Text("Close"))
+              ],
+            ));
+
     return Flexible(
         child: FlutterMap(
       options: MapOptions(
-          center: LatLng(
-              diaryEntry.location.latitude, diaryEntry.location.longitude),
+          center: LatLng(personalEntries.last.location.latitude,
+              personalEntries.last.location.longitude),
           zoom: 12),
       children: [
         TileLayer(
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
         ),
         MarkerLayer(
-          markers: [
-            Marker(
-                point: LatLng(diaryEntry.location.latitude,
-                    diaryEntry.location.longitude),
-                width: 200,
-                height: 200,
-                child: IconButton(
-                  icon: const Icon(Icons.location_on),
-                  onPressed: () {},
-                )),
-          ],
-        ),
+            markers: personalEntries
+                .map((entry) => Marker(
+                    point: LatLng(
+                        entry.location.latitude, entry.location.longitude),
+                    width: 200,
+                    height: 200,
+                    child: IconButton(
+                      icon: const Icon(Icons.location_on),
+                      onPressed: () {
+                        openDialog(entry);
+                      },
+                    )))
+                .toList()),
       ],
     ));
   }

@@ -1,11 +1,10 @@
-import 'dart:developer';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nikki_app/data/diary_entry.dart';
-import 'package:nikki_app/domain/bloc/camera_cubit.dart';
+import 'package:nikki_app/domain/bloc/diary_entry_cubit.dart';
 import 'package:nikki_app/utils/camera_util.dart';
 import 'package:nikki_app/widgets/diary_entry.dart';
 import 'package:nikki_app/widgets/nikki_title.dart';
@@ -41,18 +40,19 @@ class _CameraScreenState extends State<CameraScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bloc = context.read<CameraCubit>();
+    final bloc = context.read<DiaryEntryCubit>();
 
     void onSubmit() async {
       Navigator.of(context).pop();
       var description = textEditingController.text;
-      if (description != null && description.isNotEmpty) {
+      if (description.isNotEmpty) {
         await Geolocator.getCurrentPosition(
                 desiredAccuracy: LocationAccuracy.high)
             .then((Position position) {
           var diaryEntry = DiaryEntryData("test_user", DateTime.now(),
               textEditingController.text, latestImage, position);
           bloc.addDiaryEntry(diaryEntry);
+          setState(() {});
           //push to database
         }).catchError((e) {
           debugPrint(e);
@@ -62,20 +62,22 @@ class _CameraScreenState extends State<CameraScreen> {
 
     Future openDialog() => showDialog(
         context: context,
-        builder: (context) => AlertDialog(
-              title: NikkiTitle(content: "Description"),
+        builder: (context) =>
+            AlertDialog(
+              title: const NikkiTitle(content: "Description"),
               content: TextField(
                 autocorrect: true,
                 autofocus: true,
                 decoration:
-                    InputDecoration(hintText: "Enter the description..."),
+                    const InputDecoration(hintText: "Enter the description..."),
                 controller: textEditingController,
               ),
               actions: [
                 TextButton(
-                    onPressed: onSubmit, child: NikkiTitle(content: "Submit"))
+                    onPressed: onSubmit, child: const NikkiTitle(content: "Submit"))
               ],
-            ));
+            )
+    );
 
     takeEntry() {
       CameraUtil().pick(onPick: (File? image) async {
@@ -86,32 +88,32 @@ class _CameraScreenState extends State<CameraScreen> {
 
     return SafeArea(
       child: Padding(
-          padding: EdgeInsets.all(20),
+          padding: const EdgeInsets.all(20),
           child: SingleChildScrollView(
             child: Column(children: [
-              NikkiTitle(content: "Welcome to your Nikki"),
-              Divider(),
-              Text("Your recent memories"),
-              Divider(),
+              const NikkiTitle(content: "Welcome to your Nikki"),
+              const Divider(),
+              const Text("Your recent memories"),
+              const Divider(),
               ElevatedButton(
                 onPressed: () {
                   takeEntry();
                 },
-                child: Text("Press me"),
+                child: const Text("Press me"),
               ),
-              StreamBuilder<UserRepository>(
-                stream: bloc.userStream,
+              FutureBuilder<UserRepository>(
+                future: context.read<DiaryEntryCubit>().loadData(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return LoadingPage(); // Placeholder loading indicator
+                    return const LoadingPage();
                   } else if (snapshot.hasError) {
-                    return ErrorPage(content: snapshot.error.toString());
-                  } else if (snapshot.hasData && snapshot.data != null) {
+                    return const ErrorPage(content: "No content loaded");
+                  } else {
                     final userRepository = snapshot.data!;
                     if (userRepository.diaryEntry != null) {
                       return Column(
                         children: [
-                          NikkiTitle(content: "Today's Nikki"),
+                          const NikkiTitle(content: "Today's Nikki"),
                           Center(
                             child: DiaryEntryDetailsWidget(
                                 diaryEntry: userRepository.diaryEntry!),
@@ -119,8 +121,8 @@ class _CameraScreenState extends State<CameraScreen> {
                         ],
                       );
                     }
+                    return const NoEntryTakenWidget();
                   }
-                  return NoEntryTakenWidget();
                 },
               )
             ]),

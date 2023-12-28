@@ -31,7 +31,7 @@ class _DiaryEntryState extends State<DiaryEntryWidget>{
 
   @override
   Widget build(BuildContext context) {
-    return Padding(padding: EdgeInsets.all(20.0),
+    return Padding(padding: const EdgeInsets.all(20.0),
     child: Expanded(
       child: Column(
         children: [
@@ -40,14 +40,14 @@ class _DiaryEntryState extends State<DiaryEntryWidget>{
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "Your entry at "+diaryEntry.dateTime.day.toString(),
-                style: TextStyle(
+                "Your entry at ${diaryEntry.dateTime.day}",
+                style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 12.0,
                     color: Colors.black54
                 ),
               ),
-              IconButton(onPressed: expandEntry, icon: Icon(Icons.arrow_drop_down_circle_rounded))
+              IconButton(onPressed: expandEntry, icon: const Icon(Icons.arrow_drop_down_circle_rounded))
             ],
           ),
           if(expanded)
@@ -71,7 +71,7 @@ class DiaryEntryDetailsWidget extends StatelessWidget{
           Image.file(diaryEntry.image!),
           Text(
             diaryEntry.description,
-            style: TextStyle(
+            style: const TextStyle(
               fontWeight: FontWeight.bold
             ),
           )
