@@ -9,9 +9,6 @@ import 'package:nikki_app/widgets/loading_page.dart';
 import 'package:nikki_app/widgets/nikki_title.dart';
 import 'package:provider/provider.dart';
 
-import '../domain/repository/user_repository.dart';
-import '../widgets/no_entry_taken.dart';
-
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
 
@@ -21,6 +18,8 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   late final TabController _tabController;
+  DiaryEntryData? selectedEntry = null;
+  DateTime selectedDate = DateTime.now();
   @override
   void initState() {
     super.initState();
@@ -31,6 +30,21 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  void selectEntry(DiaryEntryData? diaryEntryData, DateTime dateTime){
+    if(diaryEntryData != null){
+      setState(() {
+        selectedEntry = diaryEntryData;
+        selectedDate = dateTime;
+      });
+    }
+    else{
+      setState(() {
+        selectedEntry = null;
+        selectedDate = dateTime;
+      });
+    }
   }
 
   @override
@@ -44,43 +58,86 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
           tabs: const [Tab(text: "Map"), Tab(text: "Calendar")],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: <Widget>[
-          FutureBuilder<UserRepository>(
-            future: bloc.loadData(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const LoadingPage(); // Placeholder loading indicator
-              } else if (snapshot.hasError) {
-                return ErrorPage(content: snapshot.error.toString());
-              } else if (snapshot.hasData && snapshot.data != null) {
-                final userRepository = snapshot.data;
-                return Center(
-                  child: MapWidget(
-                      personalEntries: userRepository!.personalEntries),
-                );
-              } else {
-                return const NoEntryTakenWidget();
-              }
-            },
-          ),
-          const CalendarWidget(),
-        ],
-      ),
+      body: FutureBuilder<List<DiaryEntryData>>(
+          future: bloc.loadDiaryEntries(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const LoadingPage(); // Placeholder loading indicator
+            } else if (snapshot.hasError) {
+              return ErrorPage(content: snapshot.error.toString());
+            } else if (snapshot.hasData &&
+                snapshot.data != null &&
+                snapshot.requireData.isNotEmpty) {
+              final entries = snapshot.requireData;
+              return TabBarView(
+                controller: _tabController,
+                children: <Widget>[
+                  Center(
+                    child: MapWidget(personalEntries: entries),
+                  ),
+                  CalendarWidget(personalEntries: entries, entry: selectedEntry, onSelect: selectEntry, dateSelected: selectedDate,),
+                ],
+              );
+            }
+            return const ErrorPage(content: "Something went wrong. Please try again later.");
+          }),
     ));
   }
 }
 
 class CalendarWidget extends StatelessWidget {
-  const CalendarWidget({super.key});
+  const CalendarWidget({super.key, required this.personalEntries, required this.entry,required this.dateSelected, required this.onSelect});
+
+  final List<DiaryEntryData> personalEntries;
+  final DiaryEntryData? entry;
+  final DateTime dateSelected;
+  final void Function(DiaryEntryData?, DateTime) onSelect;
+
+  DateTime findOldestEntry(){
+    if (personalEntries.isEmpty) {
+      return DateTime.now();
+    }
+
+    DiaryEntryData oldestEntry = personalEntries[0];
+
+    for (var entry in personalEntries) {
+      if (entry.dateTime.isBefore(oldestEntry.dateTime)) {
+        oldestEntry = entry;
+      }
+    }
+    return oldestEntry.dateTime;
+  }
+
+  DiaryEntryData? findEntryByDateTime(DateTime targetDateTime) {
+    for (var entry in personalEntries) {
+      if (entry.dateTime.day == targetDateTime.day
+          && entry.dateTime.month == targetDateTime.month
+          && entry.dateTime.year == targetDateTime.year) {
+        return entry;
+      }
+    }
+    return null;
+  }
+
 
   @override
   Widget build(BuildContext context) {
-    return const Column(
-      children: [
-        //CalendarDatePicker(initialDate: DateTime(), firstDate: DateTime(), lastDate: DateTime(), onDateChanged: (dateTime){})
-      ],
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: [
+            CalendarDatePicker(
+                initialDate: dateSelected,
+                firstDate: findOldestEntry(),
+                lastDate: DateTime.now(),
+                onDateChanged: (dateTime) =>
+                  onSelect(findEntryByDateTime(dateTime), dateTime)),
+              if(entry != null)
+                DiaryEntryDetailsWidget(diaryEntry: entry!)
+          ],
+        ),
+      ),
     );
   }
 }
@@ -96,13 +153,15 @@ class MapWidget extends StatelessWidget {
         context: context,
         builder: (context) => AlertDialog(
               title: const NikkiTitle(content: "Your memories"),
-              content: DiaryEntryDetailsWidget(diaryEntry: entry),
+              content: SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.6,
+                  child: DiaryEntryDetailsWidget(diaryEntry: entry)),
               actions: [
                 TextButton(
                     onPressed: () {
                       Navigator.of(context).pop();
                     },
-                    child: const Text("Close"))
+                    child: const NikkiText(content: "Close"))
               ],
             ));
 

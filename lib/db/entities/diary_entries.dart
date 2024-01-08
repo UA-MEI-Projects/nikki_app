@@ -1,6 +1,6 @@
 import 'package:hive/hive.dart';
 
-//part 'diary_entries.g.dart';
+part 'diary_entries.g.dart';
 
 @HiveType(typeId: 1)
 class DiaryEntry {
@@ -22,5 +22,8 @@ class DiaryEntry {
   @HiveField(5)
   final double longitude;
 
-  DiaryEntry(this.username, this.dateTime, this.description, this.imagePath, this.longitude, this.latitude);
+  @HiveField(6)
+  final String prompt;
+
+  DiaryEntry(this.username, this.dateTime, this.description, this.imagePath, this.longitude, this.latitude, this.prompt);
 }

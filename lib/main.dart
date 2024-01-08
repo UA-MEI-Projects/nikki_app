@@ -1,15 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:nikki_app/domain/bloc/preferences_cubit.dart';
-import 'package:nikki_app/screens/camera.dart';
-import 'package:nikki_app/screens/map.dart';
-import 'package:nikki_app/screens/settings.dart';
-import 'package:nikki_app/screens/share.dart';
+
 import 'package:nikki_app/utils/get_it_init.dart';
-import 'config/app_config.dart';
-import 'domain/bloc/diary_entry_cubit.dart';
-import 'domain/repository/user_repository.dart';
+import 'package:nikki_app/widgets/splash_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,109 +34,10 @@ class _NikkiAppState extends State<NikkiApp> {
     return MaterialApp(
       title: 'Nikki',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
+        colorScheme: ColorScheme.fromSeed(seedColor: Color.fromRGBO(255, 100, 73, 0.37)),
         useMaterial3: true,
       ),
-      home: const AppContainer(),
-    );
-  }
-}
-
-class AppContainer extends StatefulWidget{
-  const AppContainer({super.key});
-
-  @override
-  State<StatefulWidget> createState() => _AppContainerState();
-}
-
-class _AppContainerState extends State<AppContainer> {
-  int screenIndex = 0;
-  // final screens = [
-  //   BlocProvider(
-  //     create: (context) => getIt.get<DiaryEntryCubit>(),
-  //     child: const CameraScreen(),
-  //   ),
-  //   BlocProvider(
-  //     create: (context) => getIt.get<DiaryEntryCubit>(),
-  //     child: const MapScreen(),
-  //   ),
-  //   BlocProvider(
-  //     create: (context) => getIt.get<DiaryEntryCubit>(),
-  //     child: const ShareScreen(),
-  //   ),
-  //   BlocProvider(create: (context) => getIt.get<PreferencesCubit>(),
-  //     child: const SettingsScreen(),
-  //   )
-  // ];
-
-  final screens = [
-    CameraScreen(),
-    MapScreen(),
-    ShareScreen(),
-    SettingsScreen()
-  ];
-
-  void onNavigate(int index) {
-    setState(() {
-      screenIndex = index;
-    });
-  }
-
-  Future<bool> _handleLocationPermission(context) async {
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Location services are disabled. Please enable the services')));
-      return false;
-    }  permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Location permissions are denied')));
-        return false;
-      }
-    }  if (permission == LocationPermission.deniedForever) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Location permissions are permanently denied, we cannot request permissions.')));
-      return false;
-    }  return true;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    AppConfig().fetchData();
-    _handleLocationPermission(context);
-    return BlocProvider(
-      create: (context) => getIt.get<DiaryEntryCubit>(),
-      child: Scaffold(
-          extendBody: true,
-          body: screens[screenIndex],
-          bottomNavigationBar: BottomNavigationBar(
-              iconSize: 35.0,
-              elevation: 1,
-              selectedFontSize: 0,
-              unselectedFontSize: 0,
-              selectedItemColor: Theme.of(context).colorScheme.primary,
-              unselectedItemColor: Theme.of(context).colorScheme.secondary,
-              showSelectedLabels: false,
-              showUnselectedLabels: false,
-              currentIndex: screenIndex,
-              onTap: onNavigate,
-              items: const [
-                BottomNavigationBarItem(
-                    label: 'Camera', icon: Icon(Icons.camera_alt)),
-                BottomNavigationBarItem(
-                    label: 'Map', icon: Icon(Icons.map)),
-                BottomNavigationBarItem(
-                    label: 'Share', icon: Icon(Icons.share)),
-                BottomNavigationBarItem(
-                    label: 'Settings', icon: Icon(Icons.settings)),
-          ])
-      ),
+      home: const SplashScreen(),
     );
   }
 }

@@ -3,17 +3,24 @@ import 'dart:typed_data';
 
 import 'package:geolocator/geolocator.dart';
 import 'package:nearby_connections/nearby_connections.dart';
+import 'package:nikki_app/domain/repository/user_repository.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../data/diary_entry.dart';
 
 import 'dart:convert';
 
+import 'get_it_init.dart';
+
+final nearbyConnections = getIt.get<Nearby>();
+final userRepository = getIt.get<UserRepository>();
+
 String serializeDiaryEntry(DiaryEntryData entry) {
   final Map<String, dynamic> entryMap = {
     'username': entry.username,
+    'prompt': entry.prompt,
     'description': entry.description,
     'datetime': entry.dateTime.toIso8601String(),
-    'image': entry.image != null ? base64Encode(entry.image!.readAsBytesSync()) : null,
     'longitude': entry.location.longitude,
     'latitude': entry.location.latitude
     // Add other fields as needed
@@ -22,18 +29,19 @@ String serializeDiaryEntry(DiaryEntryData entry) {
   return jsonEncode(entryMap);
 }
 
-DiaryEntryData deserializeDiaryEntry(String jsonStr) {
+
+Future<DiaryEntryData> deserializeDiaryEntry(String jsonStr) async {
   final Map<String, dynamic> entryMap = jsonDecode(jsonStr);
-  final Uint8List? imageBytes = entryMap['image'] != null ? base64Decode(entryMap['image']) : null;
 
   return DiaryEntryData(
-    entryMap['username'],
-    DateTime.parse(entryMap['datetime']),
-    entryMap['description'],
-    imageBytes != null ? File.fromRawPath(imageBytes) : null,
+      entryMap['username'],
+      entryMap['prompt'],
+      DateTime.parse(entryMap['datetime']),
+      entryMap['description'],
+      null,
       Position(
-        latitude: entryMap['latitude'].latitude,
-        longitude: entryMap['longitude'].longitude,
+        latitude: entryMap['latitude'],
+        longitude: entryMap['longitude'],
         timestamp: DateTime.parse(entryMap['datetime']),
         accuracy: 0.0,
         altitude: 0.0,
@@ -43,30 +51,23 @@ DiaryEntryData deserializeDiaryEntry(String jsonStr) {
         speed: 0.0,
         speedAccuracy: 0.0,
       )
-    // Add other fields as needed
-  );
+      // Add other fields as needed
+      );
 }
 
 
-Future<void> sendDiaryEntryOverBluetooth(DiaryEntryData entry) async {
-  final serializedData = serializeDiaryEntry(entry);
-  final List<int> bytes = utf8.encode(serializedData); // Convert to UTF-8 bytes
 
-  try {
-    await Nearby().sendBytesPayload('endpointId', Uint8List.fromList(bytes));
-    // Replace 'endpointId' with the actual ID of the nearby device
-  } catch (e) {
-    print('Error sending data: $e');
-  }
+Future<void> sendDiaryEntryOverBluetooth(DiaryEntryData entry, String id) async {
+  final serializedData = serializeDiaryEntry(entry); // Convert to UTF-8 bytes
+
+  Nearby().sendBytesPayload(id, Uint8List.fromList(serializedData.codeUnits));
 }
 
-Future<void> receiveDiaryEntryOverBluetooth() async {
-  Nearby().onPayloadReceived.listen((payload) {
-    if (payload.type == PayloadType.bytes) {
-      final List<int> bytes = List.from(payload.bytes!);
-      final String serializedData = utf8.decode(bytes);
-      final DiaryEntryData receivedEntry = deserializeDiaryEntry(serializedData);
-      // Handle the received DiaryEntry
-    }
-  });
+Future<DiaryEntryData> receiveDiaryEntryOverBluetooth(Payload payload) async {
+  final List<int> bytes = List.from(payload.bytes!);
+  final String serializedData = utf8.decode(bytes);
+  final DiaryEntryData receivedEntry = await deserializeDiaryEntry(serializedData);
+  userRepository.addSharedEntry(receivedEntry);
+  return receivedEntry;
 }
+
