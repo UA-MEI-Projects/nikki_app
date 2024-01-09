@@ -1,19 +1,20 @@
-import 'dart:developer';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:nikki_app/model/diary_entry.dart';
-import 'package:nikki_app/screens/map.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:nikki_app/data/diary_entry.dart';
+import 'package:nikki_app/domain/bloc/diary_entry_cubit.dart';
 import 'package:nikki_app/utils/camera_util.dart';
 import 'package:nikki_app/widgets/diary_entry.dart';
 import 'package:nikki_app/widgets/nikki_title.dart';
-import 'package:provider/provider.dart';
+import 'package:nikki_app/widgets/splash_page.dart';
 
-import '../model/diary_entry_model.dart';
+import '../config/app_config.dart';
+import '../domain/repository/user_repository.dart';
+import '../utils/get_it_init.dart';
 import '../widgets/error_page.dart';
 import '../widgets/loading_page.dart';
-import '../widgets/no_entry_taken.dart';
 
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
@@ -29,8 +30,8 @@ class _CameraScreenState extends State<CameraScreen> {
 
   @override
   void initState() {
-    super.initState();
     textEditingController = TextEditingController();
+    super.initState();
   }
 
   @override
@@ -41,18 +42,26 @@ class _CameraScreenState extends State<CameraScreen> {
 
   @override
   Widget build(BuildContext context) {
-    var diaryEntryModel = context.watch<DiaryEntryModel>();
+    final bloc = context.read<DiaryEntryCubit>();
 
     void onSubmit() async {
       Navigator.of(context).pop();
       var description = textEditingController.text;
-      if(description != null && description.isNotEmpty){
+      var prompt = await bloc.userRepository.loadPrompt();
+      if (description.isNotEmpty) {
         await Geolocator.getCurrentPosition(
-            desiredAccuracy: LocationAccuracy.high)
+                desiredAccuracy: LocationAccuracy.high)
             .then((Position position) {
-          var diaryEntry = DiaryEntryData("test_user", DateTime.now(),
-              textEditingController.text, latestImage, position);
-          diaryEntryModel.addEntry(diaryEntry);
+          var userRepository = bloc.userRepository;
+          var diaryEntry = DiaryEntryData(
+              userRepository.username,
+              prompt,
+              DateTime.now(),
+              textEditingController.text,
+              latestImage,
+              position);
+          bloc.addDiaryEntry(diaryEntry);
+          setState(() {});
         }).catchError((e) {
           debugPrint(e);
         });
@@ -62,65 +71,195 @@ class _CameraScreenState extends State<CameraScreen> {
     Future openDialog() => showDialog(
         context: context,
         builder: (context) => AlertDialog(
-              title: NikkiTitle(content: "Description"),
+              title: const NikkiTitle(content: "Description"),
               content: TextField(
                 autocorrect: true,
                 autofocus: true,
                 decoration:
-                    InputDecoration(hintText: "Enter the description..."),
+                    const InputDecoration(hintText: "Enter the description..."),
                 controller: textEditingController,
               ),
               actions: [
                 TextButton(
-                    onPressed: onSubmit, child: NikkiTitle(content: "Submit"))
+                    onPressed: onSubmit,
+                    child: const NikkiText(content: "Submit"))
               ],
             ));
 
     takeEntry() {
       CameraUtil().pick(onPick: (File? image) async {
-        setState(() {
-          latestImage = image!;
-        });
+        latestImage = image;
         openDialog();
       });
     }
 
     return SafeArea(
       child: Padding(
-          padding: EdgeInsets.all(20),
+          padding: const EdgeInsets.all(20),
           child: SingleChildScrollView(
             child: Column(children: [
-              NikkiTitle(content: "Welcome to your Nikki"),
-              Divider(),
-              Text("Your recent memories"),
-              Divider(),
-              ElevatedButton(
-                onPressed: () {
-                  takeEntry();
-                },
-                child: Text("Press me"),
+              const NikkiTitle(content: "Welcome to your Nikki"),
+              const Divider(),
+              Container(
+                  margin: EdgeInsets.all(
+                      10), // Optional: to provide external spacing
+                  padding: EdgeInsets.all(
+                      10), // Optional: to provide internal spacing
+                  decoration: BoxDecoration(
+                    color:
+                        Colors.white, // Choose the container's background color
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(
+                      color: Colors.deepOrangeAccent, // Border color
+                      width: 1, // Border width
+                    ), // Adjust for desired border radius
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey
+                            .withOpacity(0.1), // Shadow color with opacity
+                        spreadRadius: 5, // Spread radius
+                        blurRadius: 7, // Blur radius
+                        offset: Offset(0, 3), // Changes position of shadow
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      NikkiSubTitle(content: "Your prompt for today!"),
+                      FutureBuilder<String>(
+                          future: getIt.get<UserRepository>().loadPrompt(),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const TransparentLoadingPage();
+                            } else if (snapshot.hasError) {
+                              return const ErrorPage(
+                                  content: "No content loaded");
+                            } else if (snapshot.hasData &&
+                                snapshot.data != null &&
+                                snapshot.requireData.isNotEmpty) {
+                              return NikkiText(content: snapshot.requireData);
+                            }
+                            return const NoPromptWidget();
+                          })
+                    ],
+                  )),
+              const Divider(),
+              Container(
+                margin:
+                    EdgeInsets.all(10), // Optional: to provide external spacing
+                padding:
+                    EdgeInsets.all(10), // Optional: to provide internal spacing
+                decoration: BoxDecoration(
+                  color:
+                      Colors.white, // Choose the container's background color
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(
+                    color: Colors.deepOrangeAccent, // Border color
+                    width: 1, // Border width
+                  ), // Adjust for desired border radius
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey
+                          .withOpacity(0.1), // Shadow color with opacity
+                      spreadRadius: 5, // Spread radius
+                      blurRadius: 7, // Blur radius
+                      offset: Offset(0, 3), // Changes position of shadow
+                    ),
+                  ],
+                ),
+                child: Wrap(
+                  direction: Axis.vertical,
+                  alignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    const NikkiSubTitle(content: "Your recent memories"),
+                    const Divider(),
+                    FutureBuilder<List<DiaryEntryData>>(
+                      future: bloc.loadDiaryEntries(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const TransparentLoadingPage();
+                        } else if (snapshot.hasError) {
+                          return const ErrorPage(content: "No content loaded");
+                        } else if (snapshot.hasData &&
+                            snapshot.data != null &&
+                            snapshot.requireData.isNotEmpty) {
+                          final entries = snapshot.requireData;
+                          return DiaryEntryListPreviewWidget(entries: entries);
+                        }
+                        return const NoDiaryEntriesWidget();
+                      },
+                    ),
+                  ],
+                ),
               ),
-              FutureBuilder<DiaryEntryData?>(
-                future: diaryEntryModel.fetchTodayEntry(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return LoadingPage(); // Placeholder loading indicator
-                  } else if (snapshot.hasError) {
-                    return ErrorPage(content: snapshot.error.toString());
-                  } else if (snapshot.hasData && snapshot.data != null) {
-                    return Column(
-                      children: [
-                        NikkiTitle(content: "Today's Nikki"),
-                        Center(
-                          child: DiaryEntryDetailsWidget(diaryEntry: snapshot.data!,),
-                        ),
-                      ],
-                    );
-                  }
-                  else {
-                    return NoEntryTakenWidget();
-                  }
-                },
+              const Divider(),
+              Container(
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color:
+                      Colors.white, // Choose the container's background color
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(
+                    color: Colors.deepOrangeAccent, // Border color
+                    width: 1, // Border width
+                  ), // Adjust for desired border radius
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey
+                          .withOpacity(0.1), // Shadow color with opacity
+                      spreadRadius: 5, // Spread radius
+                      blurRadius: 7, // Blur radius
+                      offset: Offset(0, 3), // Changes position of shadow
+                    ),
+                  ],
+                ),
+                child: Wrap(
+                  direction: Axis.vertical,
+                  alignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    const NikkiSubTitle(content: "Today's Nikki"),
+                    const Divider(),
+                    FutureBuilder<DiaryEntryData?>(
+                      future: bloc.loadTodayEntry(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const TransparentLoadingPage();
+                        } else if (snapshot.hasError) {
+                          return const ErrorPage(content: "No content loaded");
+                        } else if (snapshot.hasData && snapshot.data != null) {
+                          final entry = snapshot.requireData;
+                          if (entry != null)
+                            return Column(
+                              children: [
+                                  SizedBox(
+                                    width:
+                                        MediaQuery.of(context).size.width * 0.8,
+                                    child: Center(
+                                      child: DiaryEntryDetailsWidget(
+                                          diaryEntry: entry),
+                                    ),
+                                  ),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    takeEntry();
+                                  },
+                                  child: const NikkiText(content:"Take another Nikki"),
+                                )
+                              ],
+                            );
+                        }
+                        return NoEntryTakenWidget(
+                          takeEntry: takeEntry,
+                        );
+                      },
+                    )
+                  ],
+                ),
               )
             ]),
           )),

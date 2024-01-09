@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:nikki_app/model/diary_entry.dart';
+import 'package:nikki_app/data/diary_entry.dart';
+import 'package:nikki_app/domain/bloc/diary_entry_cubit.dart';
+import 'package:nikki_app/widgets/diary_entry.dart';
 import 'package:nikki_app/widgets/error_page.dart';
 import 'package:nikki_app/widgets/loading_page.dart';
 import 'package:nikki_app/widgets/nikki_title.dart';
 import 'package:provider/provider.dart';
-
-import '../model/diary_entry_model.dart';
-import '../widgets/no_entry_taken.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -20,13 +18,13 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   late final TabController _tabController;
-
+  DiaryEntryData? selectedEntry = null;
+  DateTime selectedDate = DateTime.now();
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
   }
-
 
   @override
   void dispose() {
@@ -34,87 +32,165 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  void selectEntry(DiaryEntryData? diaryEntryData, DateTime dateTime){
+    if(diaryEntryData != null){
+      setState(() {
+        selectedEntry = diaryEntryData;
+        selectedDate = dateTime;
+      });
+    }
+    else{
+      setState(() {
+        selectedEntry = null;
+        selectedDate = dateTime;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    var diaryEntry = context.watch<DiaryEntryModel>();
-
+    final bloc = context.read<DiaryEntryCubit>();
     return (Scaffold(
       appBar: AppBar(
-        title: NikkiTitle(content: "History"),
+        title: const NikkiTitle(content: "History"),
         bottom: TabBar(
           controller: _tabController,
-          tabs: [Tab(text: "Map"), Tab(text: "Calendar")],
+          tabs: const [Tab(text: "Map"), Tab(text: "Calendar")],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: <Widget>[
-          FutureBuilder<DiaryEntryData?>(
-            future: diaryEntry.fetchTodayEntry(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return LoadingPage(); // Placeholder loading indicator
-              } else if (snapshot.hasError) {
-                return ErrorPage(content: snapshot.error.toString());
-              } else if (snapshot.hasData && snapshot.data != null) {
-                return Center(
-                  child: MapWidget(diaryEntry: snapshot.data!),
-                );
-              } else {
-                return NoEntryTakenWidget();
-              }
-            },
-          ),
-          CalendarWidget(),
-        ],
-      ),
+      body: FutureBuilder<List<DiaryEntryData>>(
+          future: bloc.loadDiaryEntries(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const LoadingPage(); // Placeholder loading indicator
+            } else if (snapshot.hasError) {
+              return ErrorPage(content: snapshot.error.toString());
+            } else if (snapshot.hasData &&
+                snapshot.data != null &&
+                snapshot.requireData.isNotEmpty) {
+              final entries = snapshot.requireData;
+              return TabBarView(
+                controller: _tabController,
+                children: <Widget>[
+                  Center(
+                    child: MapWidget(personalEntries: entries),
+                  ),
+                  CalendarWidget(personalEntries: entries, entry: selectedEntry, onSelect: selectEntry, dateSelected: selectedDate,),
+                ],
+              );
+            }
+            return const ErrorPage(content: "Something went wrong. Please try again later.");
+          }),
     ));
   }
 }
 
 class CalendarWidget extends StatelessWidget {
-  const CalendarWidget({super.key});
+  const CalendarWidget({super.key, required this.personalEntries, required this.entry,required this.dateSelected, required this.onSelect});
+
+  final List<DiaryEntryData> personalEntries;
+  final DiaryEntryData? entry;
+  final DateTime dateSelected;
+  final void Function(DiaryEntryData?, DateTime) onSelect;
+
+  DateTime findOldestEntry(){
+    if (personalEntries.isEmpty) {
+      return DateTime.now();
+    }
+
+    DiaryEntryData oldestEntry = personalEntries[0];
+
+    for (var entry in personalEntries) {
+      if (entry.dateTime.isBefore(oldestEntry.dateTime)) {
+        oldestEntry = entry;
+      }
+    }
+    return oldestEntry.dateTime;
+  }
+
+  DiaryEntryData? findEntryByDateTime(DateTime targetDateTime) {
+    for (var entry in personalEntries) {
+      if (entry.dateTime.day == targetDateTime.day
+          && entry.dateTime.month == targetDateTime.month
+          && entry.dateTime.year == targetDateTime.year) {
+        return entry;
+      }
+    }
+    return null;
+  }
+
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        //CalendarDatePicker(initialDate: DateTime(), firstDate: DateTime(), lastDate: DateTime(), onDateChanged: (dateTime){})
-      ],
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: [
+            CalendarDatePicker(
+                initialDate: dateSelected,
+                firstDate: findOldestEntry(),
+                lastDate: DateTime.now(),
+                onDateChanged: (dateTime) =>
+                  onSelect(findEntryByDateTime(dateTime), dateTime)),
+              if(entry != null)
+                DiaryEntryDetailsWidget(diaryEntry: entry!)
+          ],
+        ),
+      ),
     );
   }
 }
 
 class MapWidget extends StatelessWidget {
-  const MapWidget({super.key, required this.diaryEntry});
+  const MapWidget({super.key, required this.personalEntries});
 
-  final DiaryEntryData diaryEntry;
+  final List<DiaryEntryData> personalEntries;
 
   @override
   Widget build(BuildContext context) {
+    Future openDialog(DiaryEntryData entry) => showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+              title: const NikkiTitle(content: "Your memories"),
+              content: SingleChildScrollView(
+                child: SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.6,
+                    child: DiaryEntryDetailsDialogWidget(diaryEntry: entry)),
+              ),
+              actions: [
+                TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: const NikkiText(content: "Close"))
+              ],
+            ));
+
     return Flexible(
         child: FlutterMap(
       options: MapOptions(
-          center: LatLng(
-              diaryEntry.location.latitude, diaryEntry.location.longitude),
+          center: LatLng(personalEntries.last.location.latitude,
+              personalEntries.last.location.longitude),
           zoom: 12),
       children: [
         TileLayer(
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
         ),
         MarkerLayer(
-          markers: [
-            Marker(
-                point: LatLng(diaryEntry.location.latitude,
-                    diaryEntry.location.longitude),
-                width: 200,
-                height: 200,
-                child: IconButton(
-                  icon: const Icon(Icons.location_on),
-                  onPressed: () {},
-                )),
-          ],
-        ),
+            markers: personalEntries
+                .map((entry) => Marker(
+                    point: LatLng(
+                        entry.location.latitude, entry.location.longitude),
+                    width: 200,
+                    height: 200,
+                    child: IconButton(
+                      icon: const Icon(Icons.location_on),
+                      onPressed: () {
+                        openDialog(entry);
+                      },
+                    )))
+                .toList()),
       ],
     ));
   }
