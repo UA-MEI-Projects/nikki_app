@@ -153,9 +153,11 @@ class MapWidget extends StatelessWidget {
         context: context,
         builder: (context) => AlertDialog(
               title: const NikkiTitle(content: "Your memories"),
-              content: SizedBox(
-                  height: MediaQuery.of(context).size.height * 0.6,
-                  child: DiaryEntryDetailsWidget(diaryEntry: entry)),
+              content: SingleChildScrollView(
+                child: SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.6,
+                    child: DiaryEntryDetailsDialogWidget(diaryEntry: entry)),
+              ),
               actions: [
                 TextButton(
                     onPressed: () {

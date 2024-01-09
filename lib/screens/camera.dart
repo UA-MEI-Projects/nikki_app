@@ -233,18 +233,25 @@ class _CameraScreenState extends State<CameraScreen> {
                           return const ErrorPage(content: "No content loaded");
                         } else if (snapshot.hasData && snapshot.data != null) {
                           final entry = snapshot.requireData;
-                          return Column(
-                            children: [
-                              if (entry != null)
-                                SizedBox(
-                                  width: MediaQuery.of(context).size.width * 0.8,
-                                  child: Center(
-                                    child: DiaryEntryDetailsWidget(
-                                        diaryEntry: entry),
+                          if (entry != null)
+                            return Column(
+                              children: [
+                                  SizedBox(
+                                    width:
+                                        MediaQuery.of(context).size.width * 0.8,
+                                    child: Center(
+                                      child: DiaryEntryDetailsWidget(
+                                          diaryEntry: entry),
+                                    ),
                                   ),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    takeEntry();
+                                  },
+                                  child: const NikkiText(content:"Take another Nikki"),
                                 )
-                            ],
-                          );
+                              ],
+                            );
                         }
                         return NoEntryTakenWidget(
                           takeEntry: takeEntry,

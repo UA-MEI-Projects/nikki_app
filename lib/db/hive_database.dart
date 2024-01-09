@@ -70,7 +70,7 @@ class AppDatabase extends DatabaseAdapter {
         diaryEntryData.username,
         diaryEntryData.dateTime,
         diaryEntryData.description,
-        diaryEntryData.image!.path,
+        null,
         diaryEntryData.location.longitude,
         diaryEntryData.location.latitude,
         diaryEntryData.prompt);
@@ -86,7 +86,7 @@ class AppDatabase extends DatabaseAdapter {
           element.prompt,
           element.dateTime,
           element.description,
-          File(element.imagePath!),
+          null,
           Position(
             latitude: element.latitude,
             longitude: element.longitude,

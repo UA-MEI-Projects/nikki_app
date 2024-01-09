@@ -140,6 +140,7 @@ class DiaryEntryDetailsWidget extends StatelessWidget {
       type: MaterialType.card,
       shadowColor: Colors.grey,
       child: Card(
+        clipBehavior: Clip.antiAlias,
         child: Padding(
           padding: EdgeInsets.all(15.0),
           child: Column(
@@ -160,6 +161,9 @@ class DiaryEntryDetailsWidget extends StatelessWidget {
                 ),
               ),
               NikkiSubTitle(content: diaryEntry.prompt),
+              NikkiText(
+                content: "Answer: "+diaryEntry.description,
+              ),
               ClipRect(
                   clipBehavior: Clip.hardEdge,
                   child: Image.file(
@@ -167,9 +171,48 @@ class DiaryEntryDetailsWidget extends StatelessWidget {
                     scale: 0.6,
                     fit: BoxFit.fitWidth,
                   )),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class DiaryEntryDetailsDialogWidget extends StatelessWidget {
+  final DiaryEntryData diaryEntry;
+  const DiaryEntryDetailsDialogWidget({super.key, required this.diaryEntry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      type: MaterialType.card,
+      shadowColor: Colors.grey,
+      child: Card(
+        clipBehavior: Clip.antiAliasWithSaveLayer,
+        child: Padding(
+          padding: EdgeInsets.all(15.0),
+          child: Column(
+            textDirection: TextDirection.ltr,
+            children: [
               NikkiText(
-                content: diaryEntry.description,
-              )
+                content: diaryEntry.username,
+              ),
+              NikkiText(
+                content: diaryEntry.dateToString(),
+              ),
+              NikkiSubTitle(content: diaryEntry.prompt),
+              NikkiText(
+                content: "Answer: "+diaryEntry.description,
+              ),
+              ClipRect(
+                  clipBehavior: Clip.hardEdge,
+                  child: Image.file(
+                    diaryEntry.image!,
+                    height: MediaQuery.of(context).size.longestSide * 0.35,
+                    scale: 0.6,
+                    fit: BoxFit.fitWidth,
+                  )),
             ],
           ),
         ),
@@ -192,9 +235,11 @@ class DiaryEntryListPreviewWidget extends StatelessWidget {
         context: context,
         builder: (context) => AlertDialog(
               title: const NikkiTitle(content: "Your memories"),
-              content:  SizedBox(
-                  height: MediaQuery.of(context).size.height * 0.6,
-                  child: DiaryEntryDetailsWidget(diaryEntry: entry)),
+              content:  SingleChildScrollView(
+                child: SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.6,
+                    child: DiaryEntryDetailsDialogWidget(diaryEntry: entry)),
+              ),
               actions: [
                 TextButton(
                     onPressed: () {
@@ -227,6 +272,7 @@ class DiaryEntryPreviewWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Card(
+        clipBehavior: Clip.antiAlias,
         elevation: 8.0,
         child: SizedBox(
           width: 50,

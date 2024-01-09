@@ -33,14 +33,14 @@ class _BluetoothConnectionWidget extends State<BluetoothConnectionWidget>{
   Map<int, String> map = {};
   Map<DiaryEntryData, bool> checkedValues = {};
   bool permissionGranted = false;
-  bool connectedToUser = true;
-  late DiaryEntryData selectedEntry;
+  bool connectedToUser = false;
+  late DiaryEntryData? selectedEntry;
 
   @override
   void initState() {
     super.initState();
     loadUsername();
-    selectedEntry = userRepository.personalEntries[0];
+    selectedEntry = userRepository.personalEntries.isNotEmpty? userRepository.personalEntries[0] : null;
     for(final entry in userRepository.personalEntries){
       checkedValues[entry] = false;
     }
@@ -111,13 +111,13 @@ class _BluetoothConnectionWidget extends State<BluetoothConnectionWidget>{
                     },
                     onDisconnected: (id) {
                       showSnackbar(
-                          "Disconnected: ${endpointMap[id]!.endpointName}, id $id");
+                          "Disconnected");
                       setState(() {
                         endpointMap.remove(id);
                       });
                     },
                   );
-                  showSnackbar("ADVERTISING: $a");
+                  showSnackbar("Searching for someone...");
                 } catch (exception) {
                   showSnackbar(exception);
                 }
@@ -164,10 +164,10 @@ class _BluetoothConnectionWidget extends State<BluetoothConnectionWidget>{
                     },
                     onEndpointLost: (id) {
                       showSnackbar(
-                          "Lost discovered Endpoint: ${endpointMap[id]?.endpointName}, id $id");
+                          "Connection lost");
                     },
                   );
-                  showSnackbar("DISCOVERING: $a");
+                  showSnackbar("Searching for someone...");
                 } catch (e) {
                   showSnackbar(e);
                 }
@@ -195,6 +195,7 @@ class _BluetoothConnectionWidget extends State<BluetoothConnectionWidget>{
                                   value: checkedValues[e],
                                   onChanged: (bool? value) {
                                     setState(() {
+                                      checkedValues[e] = value ?? false;
                                       selectedEntry = e;
                                     });
                                   },
@@ -212,10 +213,12 @@ class _BluetoothConnectionWidget extends State<BluetoothConnectionWidget>{
                   OutlinedButton(
                     child: const NikkiText(content:"Send Diary Entry"),
                     onPressed: () async {
-                      endpointMap.forEach((key, value) async {
-                        showSnackbar("Sending your Nikki...");
-                        sendDiaryEntryOverBluetooth(selectedEntry, key);
-                      });
+                      if(selectedEntry != null){
+                        endpointMap.forEach((key, value) async {
+                          showSnackbar("Sending your Nikki...");
+                          sendDiaryEntryOverBluetooth(selectedEntry!, key);
+                        });
+                      }
                     },
                   ),
                 ],
@@ -249,67 +252,63 @@ class _BluetoothConnectionWidget extends State<BluetoothConnectionWidget>{
       context: context,
       isDismissible: false,
       builder: (builder) {
-        return Center(
-          child: Column(
-            children: <Widget>[
-              Text("id: $id"),
-              Text("Token: ${info.authenticationToken}"),
-              Text("Name${info.endpointName}"),
-              Text("Incoming: ${info.isIncomingConnection}"),
-              OutlinedButton(
-                child: const NikkiText(content:"Accept Connection"),
-                onPressed: () {
-                  Navigator.pop(context);
-                  setState(() {
-                    endpointMap[id] = info;
-                    connectedToUser = true;
-                  });
-                  Nearby().acceptConnection(
-                    id,
-                    onPayLoadRecieved: (endid, payload) async {
-                      print("received");
-                      if (payload.type == PayloadType.BYTES) {
-                        final result = await receiveDiaryEntryOverBluetooth(payload);
-                        showSnackbar(result.description);
-                      }
-                    },
-                    onPayloadTransferUpdate: (endid, payloadTransferUpdate) {
-                      if (payloadTransferUpdate.status ==
-                          PayloadStatus.IN_PROGRESS) {
-                        print(payloadTransferUpdate.bytesTransferred);
-                      } else if (payloadTransferUpdate.status ==
-                          PayloadStatus.FAILURE) {
-                        showSnackbar("$endid: FAILED to transfer file");
-                      } else if (payloadTransferUpdate.status ==
-                          PayloadStatus.SUCCESS) {
-                        showSnackbar(
-                            "$endid success, total bytes = ${payloadTransferUpdate.totalBytes}");
-
-                        if (map.containsKey(payloadTransferUpdate.id)) {
-                          //rename the file now
-                          String name = map[payloadTransferUpdate.id]!;
-                          moveFile(tempFileUri!, name);
-                        } else {
-                          //bytes not received till yet
-                          map[payloadTransferUpdate.id] = "";
+        return Padding(
+          padding: const EdgeInsets.all(15.0),
+          child: Center(
+            child: Column(
+              children: <Widget>[
+                NikkiText(content: "${info.endpointName} wants to share their entries with you!"),
+                OutlinedButton(
+                  child: const NikkiText(content:"Accept Connection"),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    setState(() {
+                      endpointMap[id] = info;
+                      connectedToUser = true;
+                    });
+                    Nearby().acceptConnection(
+                      id,
+                      onPayLoadRecieved: (endid, payload) async {
+                        if (payload.type == PayloadType.BYTES) {
+                          final result = await receiveDiaryEntryOverBluetooth(payload);
+                          showSnackbar("Received a Nikki from "+result.username);
                         }
-                      }
-                    },
-                  );
-                },
-              ),
-              OutlinedButton(
-                child: const NikkiText(content:"Reject Connection"),
-                onPressed: () async {
-                  Navigator.pop(context);
-                  try {
-                    await Nearby().rejectConnection(id);
-                  } catch (e) {
-                    showSnackbar(e);
-                  }
-                },
-              ),
-            ],
+                      },
+                      onPayloadTransferUpdate: (endid, payloadTransferUpdate) {
+                        if (payloadTransferUpdate.status ==
+                            PayloadStatus.IN_PROGRESS) {
+                          print(payloadTransferUpdate.bytesTransferred);
+                        } else if (payloadTransferUpdate.status ==
+                            PayloadStatus.FAILURE) {
+                          showSnackbar("$endid: FAILED to transfer file");
+                        } else if (payloadTransferUpdate.status ==
+                            PayloadStatus.SUCCESS) {
+                          if (map.containsKey(payloadTransferUpdate.id)) {
+                            //rename the file now
+                            String name = map[payloadTransferUpdate.id]!;
+                            moveFile(tempFileUri!, name);
+                          } else {
+                            //bytes not received till yet
+                            map[payloadTransferUpdate.id] = "";
+                          }
+                        }
+                      },
+                    );
+                  },
+                ),
+                OutlinedButton(
+                  child: const NikkiText(content:"Reject Connection"),
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    try {
+                      await Nearby().rejectConnection(id);
+                    } catch (e) {
+                      showSnackbar("Connection was not successful. Please try again later.");
+                    }
+                  },
+                ),
+              ],
+            ),
           ),
         );
       },
