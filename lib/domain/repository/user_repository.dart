@@ -13,14 +13,13 @@ class UserRepository {
    List<DiaryEntryData> sharedEntries = []; //load from db
    DiaryEntryData? diaryEntry;
 
-   /*TODO SWITCH TO REAL DATA */
 
   Future<String> loadPrompt() async{
     var sharedPreferences = NikkiSharedPreferences();
     await sharedPreferences.init();
     var prompt = await sharedPreferences.getPrompt();
     if(prompt.isEmpty){
-      prompt = await appConfig.fetchTestData();
+      prompt = await appConfig.fetchData();
       sharedPreferences.setPrompt(prompt);
     }
     return prompt;

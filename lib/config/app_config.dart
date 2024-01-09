@@ -29,7 +29,7 @@ class AppConfig {
     return questionsArray[randomIndex];
   }
 
-  Future<void> fetchData() async {
+  Future<String> fetchData() async {
     try {
       Response response = await getIt.get<Dio>().get(
         _baseUrl,
@@ -46,6 +46,7 @@ class AppConfig {
       // Handle the response
       if (response.statusCode == 200) {
         final data = json.decode(response.data);
+        return data['text'];
         print("Random Drinking Question: "+data['text']);
       } else {
         print("Error: ${response.statusCode}, ${response.data}");
@@ -53,6 +54,8 @@ class AppConfig {
     } catch (e) {
       print("Error: $e");
     }
+
+    return "Couldn't load prompt";
   }
 
 }
